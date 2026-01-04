@@ -2,8 +2,7 @@ plugins {
     id 'java'
     id 'jacoco'
     id 'maven-publish'
-    id 'com.github.spacialcircumstances.gradle-cucumber-reporting' version '0.1.25'
-    id 'org.sonarqube' version '3.5.0.2730'
+    id 'org.sonarqube' version '4.4.1.3373' // Updated to a stable version
 }
 
 group = 'com.example'
@@ -19,14 +18,16 @@ repositories {
 }
 
 dependencies {
-    testImplementation 'io.cucumber:cucumber-java:6.10.4'
-    testImplementation 'io.cucumber:cucumber-junit:6.10.4'
+    // Cucumber Dependencies
+    testImplementation 'io.cucumber:cucumber-java:7.14.0'
+    testImplementation 'io.cucumber:cucumber-junit:7.14.0'
     testImplementation 'junit:junit:4.13.2'
 }
 
 test {
     useJUnit()
-    systemProperty 'cucumber.plugin', 'pretty, html:build/reports/cucumber/cucumber.html, json:build/reports/cucumber/cucumber.json'
+    // Ensures Cucumber generates the JSON file required by Jenkins
+    systemProperty 'cucumber.plugin', 'pretty, json:build/reports/cucumber/cucumber.json'
     finalizedBy jacocoTestReport
 }
 
@@ -37,7 +38,6 @@ jacocoTestReport {
     }
 }
 
-// Publishing configuration (Keep this for the Deploy phase)
 publishing {
     publications {
         maven(MavenPublication) {
@@ -47,11 +47,13 @@ publishing {
     repositories {
         maven {
             name = "myMavenRepo"
-            url = "https://mymavenrepo.com/repo/cEmjfkxugPlzLxXg1A2B/" // Use your repo URL
+            // Reads the URL from Jenkins Global Properties
+            url = System.getenv('MYMAVENREPO_URL') ?: "https://mymavenrepo.com/repo/cEmjfkxugPlzLxXg1A2B/"
             allowInsecureProtocol = true
             credentials {
-                username = "myMavenRepo"
-                password = "test0005"
+                // Reads User/Pass from Jenkins Global Properties
+                username = System.getenv('MYMAVENREPO_USER')
+                password = System.getenv('MYMAVENREPO_PASSWORD')
             }
         }
     }
