@@ -1,0 +1,61 @@
+pipeline {
+    agent any
+
+    stages {
+        stage('Test') {
+            steps {
+                bat './gradlew test'
+            }
+            post {
+                always {
+                    junit 'build/test-results/test/*.xml'
+                    cucumber buildStatus: 'unstable', jsonReportDirectory: 'build/reports/cucumber', fileIncludePattern: '*.json'
+                }
+            }
+        }
+
+        stage('Code Analysis') {
+            steps {
+                withSonarQubeEnv('sonar') { 
+                    bat './gradlew sonarqube'
+                }
+            }
+        }
+
+        stage('Code Quality') {
+            steps {
+                timeout(time: 1, unit: 'HOURS') {
+                    waitForQualityGate abortPipeline: true
+                }
+            }
+        }
+
+        stage('Build') {
+            steps {
+                bat './gradlew assemble javadoc'
+                archiveArtifacts artifacts: 'build/libs/*.jar', fingerprint: true
+            }
+        }
+
+        stage('Deploy') {
+            steps {
+                bat './gradlew publish'
+            }
+        }
+    }
+
+    post {
+        success {
+            slackSend color: 'good', message: "Build Success: ${env.JOB_NAME} [${env.BUILD_NUMBER}]"
+            emailext body: 'The build was successful. Deployed to MyMavenRepo.', 
+                     subject: "Build Success: ${env.JOB_NAME}", 
+                     to: 'mm_maraf@esi.dz'
+        }
+        failure {
+            slackSend color: 'danger', message: "Build Failed: ${env.JOB_NAME} [${env.BUILD_NUMBER}]"
+            emailext body: 'The build failed. Check Jenkins logs.', 
+                     subject: "Build Failed: ${env.JOB_NAME}", 
+                     to: 'mm_maraf@esi.dz'
+        }
+    }
+}
